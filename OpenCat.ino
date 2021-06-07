@@ -390,13 +390,7 @@ void setup() {
 
 void loop() {
   float voltage = analogRead(BATT);
-  if (voltage <
-#ifdef NyBoard_V0_1
-      650
-#else
-      300
-#endif
-     ) { //give the cat a break when voltage drops after sprint
+  if (voltage < 300) { //give the cat a break when voltage drops after sprint
     //adjust the thresholds according to your batteries' voltage
     //if set too high, the robot will keep crying.
     //If too low, Nybble may faint due to temporary voltage drop
@@ -408,7 +402,6 @@ void loop() {
   else {
     newCmd[0] = '\0';
     newCmdIdx = 0;
-
 
     // input block
     if (irrecv.decode(&results)) {
@@ -598,6 +591,7 @@ void loop() {
         if (token == T_UNDEFINED) {}; //some words for undefined behaviors
         if (token == T_SKILL) { //validating key
 
+          // TODO: insert a preprocessor to switch gaits
           motion.loadBySkillName(newCmd);
 
           char lr = newCmd[strlen(newCmd) - 1];

@@ -132,6 +132,8 @@ void meow(int repeat = 0, int pause = 200, int startF = 50,  int endF = 200, int
   }
 }
 
+//TODO: move into separate signals file
+
 //token list
 #define T_ABORT     'a'
 #define T_BEEP      'b'
@@ -629,21 +631,12 @@ float levelTolerance[2] = {ROLL_LEVEL_TOLERANCE, PITCH_LEVEL_TOLERANCE}; //the b
 float postureOrWalkingFactor;
 #endif
 
-#ifdef X_LEG  // >< leg
-int8_t adaptiveParameterArray[16][NUM_ADAPT_PARAM] = {
-  { -panF, 0}, { -panF, -tiltF}, { -2 * panF, 0}, {0, 0},
-  {sRF, -sPF}, { -sRF, -sPF}, { -sRF, sPF}, {sRF, sPF},
-  {uRF, uPF}, {uRF, uPF}, { -uRF, uPF}, { -uRF, uPF},
-  {lRF, lPF}, {lRF, lPF}, { -lRF, lPF}, { -lRF, lPF}
-};
-#else         // >> leg
 int8_t adaptiveParameterArray[16][NUM_ADAPT_PARAM] = {
   { -panF, 0}, { -panF / 2, -tiltF}, { -2 * panF, 0}, {0, 0},
   {sRF, -sPF}, { -sRF, -sPF}, { -sRF, sPF}, {sRF, sPF},
   {uRF, uPF}, {uRF, uPF}, {uRF, uPF}, {uRF, uPF},
   {lRF, -0.5 * lPF}, {lRF, -0.5 * lPF}, {lRF, 0.5 * lPF}, {lRF, 0.5 * lPF}
 };
-#endif
 
 float RollPitchDeviation[2];
 int8_t ramp = 1;
