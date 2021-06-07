@@ -10,7 +10,7 @@ const char calibrationpage[] PROGMEM = R"=====(
         <p><b>Don't forget to hit the save button once you're done, or you'll loose your hard work!</b></p>
     </div>
     <div class="center">
-        <img src="https://gblobscdn.gitbook.com/assets%2F-MPQ2vWEZUH7ol6XE55o%2F-MShb_2_2fVamKuokK2A%2F-MShe8Oogbo5SCF0YULN%2FIndex.png?alt=media&token=ca8cc841-460a-4f10-af02-aa9d73093a0e" alt="Bittle joint overview" width="300">
+        <img Sketch="https://gblobscdn.gitbook.com/assets%2F-MPQ2vWEZUH7ol6XE55o%2F-MShb_2_2fVamKuokK2A%2F-MShe8Oogbo5SCF0YULN%2FIndex.png?alt=media&token=ca8cc841-460a-4f10-af02-aa9d73093a0e" alt="Bittle joint overview" width="300">
     </div>
     <h4>Offset amount</h4>
     <div class="btn-group center" style="width:100%">

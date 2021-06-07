@@ -28,7 +28,8 @@
   SOFTWARE.
 */
 #define MAIN_SKETCH
-#include "WriteInstinct/OpenCat.h"
+#include "Instinct/OpenCat.h"
+#include "Instinct/Signals.h"
 
 #include <I2Cdev.h>
 #include <MPU6050_6Axis_MotionApps20.h>
@@ -400,7 +401,7 @@ void loop() {
 
     // input block
     if (irrecv.decode(&results)) {
-      String IRsig = irParser(translateIR());
+      String IRsig = preprocessSignal(translateIR());
       if (IRsig != "") {
         strcpy(newCmd, IRsig.c_str());
         if (strlen(newCmd) == 1)
@@ -586,8 +587,9 @@ void loop() {
         if (token == T_UNDEFINED) {}; //some words for undefined behaviors
         if (token == T_SKILL) { //validating key
 
-          // TODO: insert a preprocessor to switch gaits
-          motion.loadBySkillName(newCmd);
+          char skill[8];
+          preprocessSignal(newCmd).toCharArray(skill, 8);
+          motion.loadBySkillName(skill);
 
           char lr = newCmd[strlen(newCmd) - 1];
           offsetLR = (lr == 'L' ? 15 : (lr == 'R' ? -15 : 0));
@@ -662,19 +664,12 @@ void loop() {
     {
       if (token == T_SKILL) {
         if (jointIdx == DOF) {
-#ifdef SKIP
-          if (updateFrame++ == SKIP) {
-            updateFrame = 0;
-#endif
             timer += tStep;
             if (timer == abs(motion.period)) {
               timer = 0;
             }
             else if (timer == 255)
               timer = abs(motion.period) - 1;
-#ifdef SKIP
-          }
-#endif
           jointIdx =
 #ifdef HEAD  //start from head
             0;
