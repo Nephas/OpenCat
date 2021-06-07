@@ -174,7 +174,6 @@ void meow(int repeat = 0, int pause = 200, int startF = 50,  int endF = 200, int
 #define K40 "tr"      //trot
 #define K41 "rn"      //run
 #define K42 "ck"      //check around
-#endif
 
 #define K50 "hi"      //greeting
 #define K51 "pu"      //push up
@@ -230,7 +229,6 @@ Adafruit_NeoPixel pixels(NUMPIXELS, PIXEL_PIN, NEO_GRB + NEO_KHZ800);
 #define LL_LEG
 #define WALKING_DOF 8
 #define P1S
-#endif
 #endif
 //remap pins for different walking modes, pin4 ~ pin15
 byte fast[] = {

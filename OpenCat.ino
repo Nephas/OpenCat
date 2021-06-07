@@ -348,11 +348,6 @@ void setup() {
     }
   } while (devStatus);
 
-  //opening music
-#if WALKING_DOF == 8
-  playMelody(MELODY);
-#endif
-
   //IR
   {
     irrecv.enableIRIn(); // Start the receiver
@@ -368,7 +363,7 @@ void setup() {
     delay(200);
 
     //meow();
-    strcpy(lastCmd, "rest");
+    strcpy(lastCmd, "zero");
     motion.loadBySkillName(lastCmd);
     for (int8_t i = DOF - 1; i >= 0; i--) {
       pulsePerDegree[i] = float(PWM_RANGE) / servoAngleRange(i);
@@ -381,7 +376,7 @@ void setup() {
     shutServos();
     token = T_REST;
   }
-  beep(30);
+  beep(10, 4);
 
   pinMode(BATT, INPUT);
   pinMode(BUZZER, OUTPUT);
