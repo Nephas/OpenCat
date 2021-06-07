@@ -69,10 +69,7 @@
 
 //postures and movements trained by RongzhongLi
 #include "InstinctBittle.h" //activate the correct header file according to your model
-//#include "InstinctNybble.h"
 
-//#define NyBoard_V0_1
-//#define NyBoard_V0_2
 #define NyBoard_V1_0
 
 //#define DEVELOPER
@@ -81,11 +78,9 @@
 #include <QList.h> //https://github.com/SloCompTech/QList
 #endif
 
-// credit to Adafruit PWM servo driver library
 #include <Wire.h>
 #include <Adafruit_PWMServoDriver.h>
 #include <EEPROM.h>
-//#include <avr/eeprom.h> // doesn't work. <EEPROM.h> works
 
 //abbreviations
 #define PT(s) Serial.print(s)  //makes life easier
@@ -175,10 +170,6 @@ void meow(int repeat = 0, int pause = 200, int startF = 50,  int endF = 200, int
 #define K32 "wk"      //walk
 
 #define K40 "tr"      //trot
-#ifdef NYBBLE
-#define K41 "lu"      //look up
-#define K42 "buttUp"    //butt up
-#else //BITTLE
 #define K41 "rn"      //run
 #define K42 "ck"      //check around
 #endif
@@ -216,27 +207,6 @@ String irParser(String raw) {
   }
 }
 
-#ifdef NyBoard_V0_1
-byte pins[] = {7, 0, 8, 15,
-               6, 1, 14, 9,
-               5, 2, 13, 10,
-               4, 3, 12, 11
-              };
-#define BATT A0 //voltage detector
-#define DEVICE_ADDRESS 0x50     //I2C Address of eeprom chip         
-#define BAUD_RATE 57600
-
-#elif defined NyBoard_V0_2
-byte pins[] = {4, 3, 11, 12,
-               5, 2, 13, 10,
-               6, 1, 14, 9,
-               7, 0, 15, 8
-              };
-#define BATT A0
-#define DEVICE_ADDRESS 0x50
-#define BAUD_RATE 57600
-
-#elif defined NyBoard_V1_0
 byte pins[] = {12, 11, 3, 4,
                13, 10, 5, 2,
                14, 9, 6, 1,
@@ -245,8 +215,6 @@ byte pins[] = {12, 11, 3, 4,
 #define BATT A7
 #define DEVICE_ADDRESS 0x54
 #define BAUD_RATE 115200
-//define PIXEL_PIN 10
-#endif
 
 #ifdef PIXEL_PIN
 #include <Adafruit_NeoPixel.h>
@@ -255,19 +223,11 @@ byte pins[] = {12, 11, 3, 4,
 Adafruit_NeoPixel pixels(NUMPIXELS, PIXEL_PIN, NEO_GRB + NEO_KHZ800);
 #endif
 
-#ifdef NYBBLE
-#define HEAD
-#define TAIL
-#define X_LEG
-#define WALKING_DOF 8
-
-#else
 #ifdef BITTLE
 #define HEAD
 #define LL_LEG
 #define WALKING_DOF 8
 #define P1S
-//#define MPU_YAW180
 #endif
 #endif
 //remap pins for different walking modes, pin4 ~ pin15
@@ -358,12 +318,6 @@ float radPerDeg = M_PI / 180;
 int8_t melody[] = {8, 13, 15,//10, 13, 8,  0,  5,  8,  3,  5, 8,
                    8, 8, 4 //32, 32, 8, 32, 32, 32, 32, 32, 8,
                   };
-/*byte pins[] = {16, 16, 16, 16,
-               16, 16, 16, 16,
-               2, 3, 13, 12,
-               0, 1, 15, 14
-              };*/
-//byte pins[] = {11, 12, 4, 16, 16, 16, 16, 16, 9,14,1,6,8,15,0,7};//tail version
 
 int8_t calibs[] = {0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0};
 #ifdef BITTLE
@@ -464,36 +418,6 @@ void copyDataFromPgmToI2cEeprom(unsigned int &eeAddress, unsigned int pgmAddress
   //PTLF("finish copying to I2C EEPROM");
 }
 
-/*
-  class Skill {//the whole SkillList routine is replaced by Motion.loadBySkillName()
-  public:
-    char* skillName; //use char array instead of String to save memory
-    int onBoardEepromAddress;
-    Skill(char* name, int address): onBoardEepromAddress(address) {
-      skillName = new char[strlen(name) + 1];
-      strcpy(skillName, name);
-    }
-    void info() {
-      PTL("skill name: " + String(skillName) + ",\ton-board EEPROM address: " + String(onBoardEepromAddress));
-    }
-  };
-
-  class SkillList: public QList<Skill*> {//the whole SkillList routine is replaced by Motion.loadBySkillName()
-  public:
-    Skill* dict(char* key) {
-      PTL("search for " + String(key) + "\t");
-      for (byte idx = 0; idx < this->size(); idx++) {
-        PT(this->at(idx)->skillName);
-        PT(" ");
-        if (!strcmp(this->at(idx)->skillName, key))
-          return this->at(idx);
-      }
-      return (Skill*)NULL;
-    }
-  };
-  SkillList skillList;
-*/
-
 class Motion {
   public:
     byte pins[DOF];           //the mapping between PCB pins and the joint indexes
@@ -581,17 +505,12 @@ class Motion {
       int readFromEE = 0;
       int readToWire = 0;
       while (len > 0) {
-        //PTL("request " + String(min(WIRE_BUFFER, len)));
         Wire.requestFrom(DEVICE_ADDRESS, min(WIRE_BUFFER, len));
         readToWire = 0;
         do {
           if (Wire.available()) dutyAngles[readFromEE++] = Wire.read();
-          /*PT( (int8_t)dutyAngles[readFromEE - 1]);
-            PT('\t')*/
         } while (--len > 0 && ++readToWire < WIRE_BUFFER);
-        //PTL();
       }
-      //PTLF("finish reading");
     }
 
     void loadDataByOnboardEepromAddress(int onBoardEepromAddress) {
@@ -624,11 +543,6 @@ class Motion {
       loadDataByOnboardEepromAddress(onBoardEepromAddress);
     }
 
-    /*    void loadBySkillPtr(Skill* sk) {//obsolete. get lookup information from a skill pointer and read the data array from storage
-          loadDataByOnboardEepromAddress(sk->onBoardEepromAddress);
-        }
-    */
-
     void info() {
       PTL("period: " + String(period) + ",\tdelayBetweenFrames: " + ",\texpected (pitch,roll): (" + expectedRollPitch[0]*degPerRad + "," + expectedRollPitch[1]*degPerRad + ")");
       for (int k = 0; k < period * (period > 1 ? WALKING_DOF : 16); k++) {
@@ -649,10 +563,6 @@ void assignSkillAddressToOnboardEeprom() {
     if (s)
       PTL(s);
     byte nameLen = EEPROM.read(SKILLS + skillAddressShift++); //without last type character
-    //PTL(nameLen);
-    /*for (int n = 0; n < nameLen; n++)
-      PT((char)EEPROM.read(SKILLS + skillAddressShift + n));
-      PTL();*/
     skillAddressShift += nameLen;
     char skillType = EEPROM.read(SKILLS + skillAddressShift++);
 #ifdef I2C_EEPROM
@@ -669,38 +579,19 @@ void assignSkillAddressToOnboardEeprom() {
   }
   PTLF("Finished!");
 }
-/*the following function is obsolete
-  void loadSkillFromOnboardEepromToSkillList() {//the whole SkillList routine is replaced by Motion.loadBySkillName()
-  int skillAddressShift = 0;
-  for (byte s = 0; s < NUM_SKILLS; s++) {//save skill info to on-board EEPROM, load skills to SkillList
-    byte nameLen = EEPROM.read(SKILLS + skillAddressShift++);
-    PTL(nameLen);
-    char* skillName = new char[nameLen + 1];
-    for (byte l = 0; l < nameLen; l++) {
-      skillName[l] = EEPROM.read(SKILLS + skillAddressShift++);
-    }
-    skillName[nameLen] = '\0';
-    skillList.push_back(new Skill(skillName, SKILLS + skillAddressShift));
-    char skillType = EEPROM.read(SKILLS + skillAddressShift++);
-    if (skillType == 'N') //progmem
-      EEPROMWriteInt(SKILLS + skillAddressShift, progmemPointer[s]);
-    skillAddressShift += 2;
-    delete[] skillName;
-  #ifdef DEVELOPER
-    Serial.println(freeMemory());
-  #endif
-  }
-  }
-*/
+
 inline byte pin(byte idx) {
   return EEPROM.read(PIN + idx);
 }
+
 inline byte remapPin(byte offset, byte idx) {
   return EEPROM.read(offset + idx);
 }
+
 inline byte servoAngleRange(byte idx) {
   return EEPROM.read(SERVO_ANGLE_RANGE + idx);
 }
+
 inline int8_t middleShift(byte idx) {
   return EEPROM.read( MID_SHIFT + idx);
 }
@@ -708,6 +599,7 @@ inline int8_t middleShift(byte idx) {
 inline int8_t rotationDirection(byte idx) {
   return EEPROM.read(ROTATION_DIRECTION + idx);
 }
+
 inline int8_t servoCalib(byte idx) {
   return EEPROM.read( CALIB + idx);
 }
@@ -763,8 +655,6 @@ float adjust(byte i) {
   float rollAdj, pitchAdj, adj;
   if (i == 1 || i > 3)  {//check idx = 1
     bool leftQ = (i - 1 ) % 4 > 1 ? true : false;
-    //bool frontQ = i % 4 < 2 ? true : false;
-    //bool upperQ = i / 4 < 3 ? true : false;
     float leftRightFactor = 1;
     if ((leftQ && ramp * RollPitchDeviation[0] > 0 )// operator * is higher than &&
         || ( !leftQ && ramp * RollPitchDeviation[0] < 0))
@@ -790,9 +680,6 @@ void saveCalib(int8_t *var) {
 }
 
 void calibratedPWM(byte i, float angle) {
-  /*float angle = max(-SERVO_ANG_RANGE/2, min(SERVO_ANG_RANGE/2, angle));
-    if (i > 3 && i < 8)
-    angle = max(-5, angle);*/
   currentAng[i] = angle;
   int duty = calibratedDuty0[i] + angle * pulsePerDegree[i] * rotationDirection(i);
   duty = max(SERVOMIN , min(SERVOMAX , duty));
@@ -829,12 +716,9 @@ template <typename T> void transform( T * target, byte angleDataRatio = 1, float
       for (byte i = offset; i < DOF; i++) {
         float dutyAng = (target[i - offset] * angleDataRatio + (steps == 0 ? 0 : (1 + cos(M_PI * s / steps)) / 2 * diff[i - offset]));
         calibratedPWM(i,  dutyAng);
-        //delayMicroseconds(2);
       }
     }
     delete [] diff;
-    //  printList(currentAng);
-    //PTL();
   }
 }
 
@@ -848,7 +732,6 @@ void skillByName(char* skillName, byte angleDataRatio = 1, float speedRatio = 1,
 
 
 //short tools
-
 template <typename T> void allCalibratedPWM(T * dutyAng, byte offset = 0) {
   for (int8_t i = DOF - 1; i >= offset; i--) {
     calibratedPWM(i, dutyAng[i]);
@@ -877,8 +760,6 @@ template <typename T> void printList(T * arr, byte len = DOF) {
   for (byte i = 0; i < len; i++) {
     temp += String(int(arr[i]));
     temp += ",\t";
-    //PT((T)(arr[i]));
-    //PT('\t');
   }
   PTL(temp);
 }

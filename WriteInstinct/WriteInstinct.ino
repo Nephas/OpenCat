@@ -30,7 +30,6 @@
 */
 #include "OpenCat.h"
 #define INSTINCT_SKETCH
-//#define AUTORUN
 
 void saveMPUcalib(int * var) {
   for (byte i = 0; i < 6; i++)
@@ -58,10 +57,7 @@ void writeConst() {
     for (byte para = 0; para < NUM_ADAPT_PARAM; para++) {
       EEPROM.update(ADAPT_PARAM + i * NUM_ADAPT_PARAM + para, round(adaptiveParameterArray[i][para]));
     }
-    /*PT(servoCalib(i));
-      PT(',');*/
   }
-  //PTL();
 }
 void saveSkillInfoFromProgmemToOnboardEeprom() {
   int skillAddressShift = 0;
@@ -85,7 +81,6 @@ void saveSkillInfoFromProgmemToOnboardEeprom() {
       EEPROM.update(SKILLS + skillAddressShift++, skillNameWithType[s][l]);
     }
     PTL();
-    //PTL("Current EEPROM address is " + String(SKILLS + skillAddressShift));
 #ifdef I2C_EEPROM
     if (!EEPROMOverflow)
       if (skillNameWithType[s][len - 1] == 'I'
@@ -227,12 +222,6 @@ void setup() {
   Serial.setTimeout(5);
   delay(1);
   while (!Serial);//check here
-  /*PTLF("MPU calibration data");
-    for (byte i = 0; i < 6; i++){
-    PTL(EEPROMReadInt(MPUCALIB + i * 2));
-    PT("\t");
-    }
-    PTL();*/
   beep(100, 50);
   // initialize device
   mpu.initialize();
@@ -305,9 +294,6 @@ void loop() {
     if (stage == 1) {
       PTLF("\nYour MPU6050 should be placed in horizontal position, with package letters facing up.");
       PTLF("Don't touch it until all six numbers appear. You should hear a long beep followed by a Meooow!");
-//      for (byte i = 0; i < 6; i++) {
-//        EEPROMWriteInt(MPUCALIB + i * 2, 0);
-//      }
       calibration();
       stage++;
       delay(100);
@@ -337,7 +323,6 @@ void loop() {
       mpu.setXGyroOffset(agOffset[3]);
       mpu.setYGyroOffset(agOffset[4]);
       mpu.setZGyroOffset(agOffset[5]);
-      //while (1);
       stage = 3;
       meow();
     }
@@ -358,8 +343,6 @@ void loop() {
           printMPU = !printMPU;
           break;
         }
-      // if (token == T_HELP)
-      //   PTLF("** Help Information **");// print the help document
       case T_REST : {
           skillByName("rest");
           break;
@@ -398,7 +381,6 @@ void loop() {
           }
 
           if (token == T_CALIBRATE) {
-            //PTLF("calibrating [ targetIdx, angle ]: ");
             if (strcmp(lastCmd, "c")) { //first time entering the calibration function
               motion.loadBySkillName("calib");
               transform(motion.dutyAngles, 1, 1, 0.5);
@@ -420,20 +402,6 @@ void loop() {
 
           int duty = SERVOMIN + PWM_RANGE / 2 + float(middleShift(target[0])  + servoCalibs[target[0]] +  motion.dutyAngles[target[0]]) * pulsePerDegree[target[0]] * rotationDirection(target[0]) ;
           pwm.setPWM(pin(target[0]), 0,  duty);
-          //      PT("shift ");
-          //      PT(middleShift(target[0]));
-          //      PT("\tcalib ");
-          //      PT(servoCalibs[target[0]]);
-          //      PT("\ttarget ");
-          //      PT(target[1]);
-          //      PT("\tPWM_range ");
-          //      PT(PWM_RANGE);
-          //      PT("\tangle_range ");
-          //      PT(servoAngleRange(target[0]));
-          //      PT("\tPpD ");
-          //      PT(pulsePerDegree[target[0]]);
-          //      PT("\tduty ");
-          //      PTL(duty);
           break;
         }
       default: if (Serial.available() > 0) {
@@ -444,17 +412,10 @@ void loop() {
     while (Serial.available() && Serial.read()); //flush the remaining serial buffer in case the commands are parsed incorrectly
 
     if (strcmp(cmd, "") && strcmp(lastCmd, cmd) ) {
-      //      PT("compare lastCmd ");
-      //      PT(lastCmd);
-      //      PT(" with newCmd ");
-      //      PT(token);
-      //      PT(cmd);
-      //      PT("\n");
       if (token == T_UNDEFINED) {}; //some words for undefined behaviors
 
       if (token == T_SKILL) { //validating key
         motion.loadBySkillName(cmd);
-        //motion.info();
 #ifdef DEVELOPER
         PTF("free memory: ");
         PTL(freeMemory());
@@ -527,7 +488,7 @@ void loop() {
 
 void meansensors() {
   long i = 0;
-  long * agBuff = new long[6] {0, 0, 0, 0, 0, 0}; //buff_ax = 0, buff_ay = 0, buff_az = 0, buff_gx = 0, buff_gy = 0, buff_gz = 0;
+  long * agBuff = new long[6] {0, 0, 0, 0, 0, 0};
 
   while (i < (buffersize + discard + 1)) {
     // read raw accel/gyro measurements from device
@@ -536,25 +497,11 @@ void meansensors() {
     if (i > discard && i <= (buffersize + discard)) { //First 100 measures are discarded
       for (byte i = 0; i < 6; i++)
         agBuff[i] += ag[i];
-      /*
-        //replacing the following codes
-        buff_ax = buff_ax + ax;
-        buff_ay = buff_ay + ay;
-        buff_az = buff_az + az;
-        buff_gx = buff_gx + gx;
-        buff_gy = buff_gy + gy;
-        buff_gz = buff_gz + gz;*/
     }
     if (i == (buffersize + discard)) {
       for (byte i = 0; i < 6; i++)
         agMean[i] = agBuff[i] / buffersize;
-      /*mean_ax = buff_ax / buffersize;
-        mean_ay = buff_ay / buffersize;
-        mean_az = buff_az / buffersize;
-        mean_gx = buff_gx / buffersize;
-        mean_gy = buff_gy / buffersize;
-        mean_gz = buff_gz / buffersize;*/
-    }
+     }
     i++;
     delay(2); //Needed so we don't get repeated measures
   }
@@ -563,17 +510,7 @@ void meansensors() {
 
 void calibration() {
   for (int i = 0; i < 6; i++) {
-    agOffset[i] = ((i == 2 ? 16384 : 0) - agMean[i]) / 8; //agOffset[2] is az_offset
-
-    /*
-       //replacing the following codes
-       ax_offset = -mean_ax / 8;
-      ay_offset = -mean_ay / 8;
-      az_offset = (16384 - mean_az) / 8;
-
-      gx_offset = -mean_gx / 4;
-      gy_offset = -mean_gy / 4;
-      gz_offset = -mean_gz / 4;*/
+    agOffset[i] = ((i == 2 ? 16384 : 0) - agMean[i]) / 8;
   }
   while (1) {
     int ready = 0;
@@ -583,14 +520,6 @@ void calibration() {
     mpu.setXGyroOffset(agOffset[3]);
     mpu.setYGyroOffset(agOffset[4]);
     mpu.setZGyroOffset(agOffset[5]);
-    /*
-       //replacing the following codes
-      mpu.setXAccelOffset(ax_offset);
-      mpu.setYAccelOffset(ay_offset);
-      mpu.setZAccelOffset(az_offset);
-      mpu.setXGyroOffset(gx_offset);
-      mpu.setYGyroOffset(gy_offset);
-      mpu.setZGyroOffset(gz_offset);*/
 
     meansensors();
 
@@ -622,68 +551,6 @@ void calibration() {
       PT("\t");
     }
     PTL();
-    /*  //replacing the following codes
-
-          if (abs(mean_ax) <= acel_deadzone) {
-            PT (1);
-            beep(1, 100, 10);
-            ready++;
-          }
-          else {
-            PT('.');
-            ax_offset = ax_offset - mean_ax / acel_deadzone;
-          }
-
-          if (abs(mean_ay) <= acel_deadzone)  {
-            PT (2);
-            beep(3, 100, 10);
-            ready++;
-          }
-          else {
-            PT('.');
-            ay_offset = ay_offset - mean_ay / acel_deadzone;
-          }
-
-          if (abs(16384 - mean_az) <= acel_deadzone)  {
-            PT (3);
-            beep(5, 100, 10);
-            ready++;
-          }
-          else {
-            PT('.');
-            az_offset = az_offset + (16384 - mean_az) / acel_deadzone;
-          }
-
-          if (abs(mean_gx) <= giro_deadzone) {
-            PT (4);
-            beep(6, 100, 10);
-            ready++;
-          }
-          else {
-            PT('.');
-            gx_offset = gx_offset - mean_gx / (giro_deadzone + 2);
-          }
-
-          if (abs(mean_gy) <= giro_deadzone) {
-            PT (5);
-            beep(8, 100, 10);
-            ready++;
-          }
-          else {
-            PT('.');
-            gy_offset = gy_offset - mean_gy / (giro_deadzone + 2);
-          }
-
-          if (abs(mean_gz) <= giro_deadzone)  {
-            PT (6);
-            beep(10, 100, 10);
-            ready++;
-          }
-          else {
-            PT('.');
-            gz_offset = gz_offset - mean_gz / (giro_deadzone + 2);
-          }
-    */
 
     if (ready == 6) {
       beep(100, 1000);

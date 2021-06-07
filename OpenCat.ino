@@ -40,7 +40,6 @@
 //#if OVERFLOW_THRESHOLD>1024-1024%PACKET_SIZE-1   // when using (1024-1024%PACKET_SIZE) as the overflow resetThreshold, the packet buffer may be broken
 // and the reading will be unpredictable. it should be replaced with previous reading to avoid jumping
 #define FIX_OVERFLOW
-//#endif
 #define HISTORY 2
 int8_t lag = 0;
 float ypr[3];         // [yaw, pitch, roll]   yaw/pitch/roll container and gravity vector
@@ -110,10 +109,8 @@ String translateIR() // takes action based on IR code received
 
     case 0xFFFFFFFF: return (""); //Serial.println(" REPEAT");
 
-    default: {
-        //Serial.println(results.value, HEX);
-      }
-      return ("");                      //Serial.println("null");
+    default: {}
+      return ("");
   }// End Case
   //delay(100); // Do not get immediate repeat //no need because the main loop is slow
 
@@ -138,14 +135,11 @@ int8_t skipGyro = 2;
 #define COUNT_DOWN 60
 
 uint8_t timer = 0;
-//#define SKIP 1
 #ifdef SKIP
 byte updateFrame = 0;
 #endif
 byte firstMotionJoint;
 byte jointIdx = 0;
-
-//bool Xconfig = false;
 
 
 unsigned long usedTime = 0;
@@ -162,7 +156,6 @@ void getFIFO() {//get FIFO only without further processing
 
 void getYPR() {//get YPR angles from FIFO data, takes time
   // wait for MPU interrupt or extra packet(s) available
-  //while (!mpuInterrupt && fifoCount < packetSize) ;
   if (mpuInterrupt || fifoCount >= packetSize)
   {
     // reset interrupt flag and get INT_STATUS byte
@@ -171,7 +164,6 @@ void getYPR() {//get YPR angles from FIFO data, takes time
 
     // get current FIFO count
     fifoCount = mpu.getFIFOCount();
-    //PTL(fifoCount);
     // check for overflow (this should never happen unless our code is too inefficient)
     if ((mpuIntStatus & 0x10) || fifoCount > OVERFLOW_THRESHOLD) { //1024) {
       // reset so we can continue cleanly
@@ -185,7 +177,6 @@ void getYPR() {//get YPR angles from FIFO data, takes time
 #endif
       lag = (lag - 1 + HISTORY) % HISTORY;
 #endif
-      // --
     }
     else if (mpuIntStatus & 0x02) {
       // wait for correct available data length, should be a VERY short wait
@@ -227,7 +218,6 @@ void getYPR() {//get YPR angles from FIFO data, takes time
 }
 
 void checkBodyMotion()  {
-  //if (!dmpReady) return;
   getYPR();
   // --
   //deal with accidents
@@ -273,11 +263,8 @@ void checkBodyMotion()  {
   //calculate deviation
   for (byte i = 0; i < 2; i++) {
     RollPitchDeviation[i] = ypr[2 - i] - motion.expectedRollPitch[i]; //all in degrees
-    //PTL(RollPitchDeviation[i]);
     RollPitchDeviation[i] = sign(ypr[2 - i]) * max(fabs(RollPitchDeviation[i]) - levelTolerance[i], 0);//filter out small angles
   }
-
-  //PTL(jointIdx);
 }
 
 void setup() {
@@ -309,13 +296,12 @@ void setup() {
   PTLF("Initialize I2C");
   PTLF("Connect MPU6050");
   mpu.initialize();
-  //do
   {
     delay(500);
     // verify connection
     PTLF("Test connection");
     PTL(mpu.testConnection() ? F("MPU successful") : F("MPU failed"));//sometimes it shows "failed" but is ok to bypass.
-  } //while (!mpu.testConnection());
+  }
 
   // load and configure the DMP
   do {
@@ -369,7 +355,6 @@ void setup() {
 
   //IR
   {
-    //PTLF("IR Receiver Button Decode");
     irrecv.enableIRIn(); // Start the receiver
   }
 
@@ -388,8 +373,7 @@ void setup() {
     for (int8_t i = DOF - 1; i >= 0; i--) {
       pulsePerDegree[i] = float(PWM_RANGE) / servoAngleRange(i);
       servoCalibs[i] = servoCalib(i);
-      calibratedDuty0[i] =  SERVOMIN + PWM_RANGE / 2 + float(middleShift(i) + servoCalibs[i]) * pulsePerDegree[i]  * rotationDirection(i) ;
-      //PTL(SERVOMIN + PWM_RANGE / 2 + float(middleShift(i) + servoCalibs[i]) * pulsePerDegree[i] * rotationDirection(i) );
+      calibratedDuty0[i] =  SERVOMIN + PWM_RANGE / 2 + float(middleShift(i) + servoCalibs[i]) * pulsePerDegree[i] * rotationDirection(i) ;
       calibratedPWM(i, motion.dutyAngles[i]);
       delay(20);
     }
@@ -427,10 +411,8 @@ void loop() {
 
 
     // input block
-    //else if (t == 0) {
     if (irrecv.decode(&results)) {
       String IRsig = irParser(translateIR());
-      //PTL(IRsig);
       if (IRsig != "") {
         strcpy(newCmd, IRsig.c_str());
         if (strlen(newCmd) == 1)
@@ -466,17 +448,12 @@ void loop() {
     }
     // accident block
     //...
-    //...
     //for obstacle avoidance and auto recovery
     if (newCmdIdx) {
       PTL(token);
       beep(newCmdIdx * 4);
       // this block handles argumentless tokens
       switch (token) {
-        //        case T_HELP: {
-        //            PTLF("* info *");// print the help document. not implemented on NyBoard Vo due to limited space
-        //            break;
-        //          }
         case T_REST: {
             strcpy(lastCmd, "rest");
             skillByName(lastCmd);
@@ -485,7 +462,6 @@ void loop() {
         case T_GYRO: {
             if (!checkGyro)
               checkBodyMotion();
-            //            countDown = COUNT_DOWN;
             checkGyro = !checkGyro;
             token = T_SKILL;
             break;
@@ -498,11 +474,6 @@ void loop() {
               shutServos();
             break;
           }
-        //        case T_RAMP: { //if the robot is on a ramp, flip the adaption direction
-        //            ramp = (ramp == 1) ? -1.5 : 1;
-        //            token = T_SKILL;
-        //            break;
-        //          }
         case T_SAVE: {
             PTLF("save offset");
             saveCalib(servoCalibs);
@@ -519,7 +490,6 @@ void loop() {
         // this block handles array like arguments
         case T_INDEXED: //indexed joint motions: joint0, angle0, joint1, angle1, ...
         case T_LISTED: //list of all 16 joint: angle0, angle2,... angle15
-          //case T_MELODY: //for melody
           {
             String inBuffer = Serial.readStringUntil('~');
             int8_t numArg = inBuffer.length();
@@ -540,15 +510,6 @@ void loop() {
             }
             transform(targetFrame, 1, 3); //need to add angleDataRatio if the angles are large
             delete [] targetFrame;
-
-            //            if (token == T_INDEXED) {
-            //              for (int i = 0; i < numArg; i += 2) {
-            //                calibratedPWM(list[i], list[i + 1]);
-            //              }
-            //            }
-            //            else if (token == T_LISTED) {
-            //              allCalibratedPWM(list);
-            //            }
 
             break;
           }
@@ -582,7 +543,6 @@ void loop() {
               float angleInterval = 0.2;
               int angleStep = 0;
               if (token == T_CALIBRATE) {
-                //PTLF("calibrating [ targetIdx, angle ]: ");
 
                 if (strcmp(lastCmd, "c")) { //first time entering the calibration function
                   strcpy(lastCmd, "c");
@@ -596,18 +556,16 @@ void loop() {
                   } else if (target[1] <= -1001) { // Using -1001 for incremental calibration. -1001 is removing 1 degree, 1002 is removing 2 and 1009 is removing 9 degrees
                     target[1] = servoCalibs[target[0]] + target[1] + 1000;
                   }
-                  
+
                   servoCalibs[target[0]] = target[1];
                 }
                 PTL();
                 printRange(DOF);
                 printList(servoCalibs);
-                //yield();
                 int duty = SERVOMIN + PWM_RANGE / 2 + float(middleShift(target[0])  + servoCalibs[target[0]] + motion.dutyAngles[target[0]]) * pulsePerDegree[target[0]] * rotationDirection(target[0]);
                 pwm.setPWM(pin(target[0]), 0,  duty);
               }
               else if (token == T_MOVE) {
-                //SPF("moving [ targetIdx, angle ]: ");
                 angleStep = floor((target[1] - currentAng[target[0]]) / angleInterval);
                 for (int a = 0; a < abs(angleStep); a++) {
                   int duty = SERVOMIN + PWM_RANGE / 2 + float(middleShift(target[0])  + servoCalibs[target[0]] + currentAng[target[0]] + a * angleInterval * angleStep / abs(angleStep)) * pulsePerDegree[target[0]] * rotationDirection(target[0]);
@@ -629,17 +587,6 @@ void loop() {
             break;
           }
 
-        //        case T_XLEG: {
-        //            for (byte s = 0; s < 23; s++) {
-        //
-        //              motion.loadDataFromProgmem(steps[s]);
-        //              transform(motion.dutyAngles, 1,2);
-        //            }
-        //            skillByName("balance");
-        //            break;
-        //          }
-
-
         default: if (Serial.available() > 0) {
             String inBuffer = Serial.readStringUntil('\n');
             strcpy(newCmd, inBuffer.c_str());
@@ -648,14 +595,7 @@ void loop() {
       while (Serial.available() && Serial.read()); //flush the remaining serial buffer in case the commands are parsed incorrectly
       //check above
       if (strcmp(newCmd, "") && strcmp(newCmd, lastCmd) ) {
-        //      PT("compare lastCmd ");
-        //      PT(lastCmd);
-        //      PT(" with newCmd ");
-        //      PT(token);
-        //      PT(newCmd);
-        //      PT("\n");
         if (token == T_UNDEFINED) {}; //some words for undefined behaviors
-
         if (token == T_SKILL) { //validating key
 
           motion.loadBySkillName(newCmd);
@@ -663,32 +603,14 @@ void loop() {
           char lr = newCmd[strlen(newCmd) - 1];
           offsetLR = (lr == 'L' ? 15 : (lr == 'R' ? -15 : 0));
 
-          //motion.info();
           timer = 0;
           if (strcmp(newCmd, "balance") && strcmp(newCmd, "lifted") && strcmp(newCmd, "dropped") )
             strcpy(lastCmd, newCmd);
-          // Xconfig = strcmp(newCmd, "wkX") ? false : true;
 
 #ifdef POSTURE_WALKING_FACTOR
           postureOrWalkingFactor = (motion.period == 1 ? 1 : POSTURE_WALKING_FACTOR);
 #endif
-          // if posture, start jointIdx from 0
-          // if gait, walking DOF = 8, start jointIdx from 8
-          //          walking DOF = 12, start jointIdx from 4
           firstMotionJoint = (motion.period <= 1) ? 0 : DOF - WALKING_DOF;
-          //          if (Xconfig) { //for smooth transition
-          //            int *targetAngle;
-          //            targetAngle = new int [WALKING_DOF];
-          //            for (byte i = 0; i < WALKING_DOF; i++)
-          //              targetAngle[i] = motion.dutyAngles[i];
-          //            targetAngle[WALKING_DOF - 6] = motion.dutyAngles[WALKING_DOF - 2] -5;
-          //            targetAngle[WALKING_DOF - 5] = motion.dutyAngles[WALKING_DOF - 1] -5;
-          //            targetAngle[WALKING_DOF - 2] = motion.dutyAngles[WALKING_DOF - 2] + 180;
-          //            targetAngle[WALKING_DOF - 1] = motion.dutyAngles[WALKING_DOF - 1] + 180;
-          //            transform( targetAngle,  1,2, firstMotionJoint);
-          //            delete [] targetAngle;
-          //          }
-          //          else
 
           if (motion.period < 1) {
             int8_t repeat = motion.loopCycle[2] - 1;
@@ -710,7 +632,7 @@ void loop() {
                   PTL(triggerAngle);
                   if ((180 - fabs(currentYpr) > 2)  //skip the angle when the reading jumps from 180 to -180
                       && (triggerAxis * currentYpr < triggerAxis * triggerAngle && triggerAxis * previousYpr > triggerAxis * triggerAngle )
-                     ) //the sign of triggerAxis will deterine whether the current angle should be larger or smaller than the trigger angle 
+                     ) //the sign of triggerAxis will deterine whether the current angle should be larger or smaller than the trigger angle
                     break;
                   previousYpr = currentYpr;
                 }
@@ -755,13 +677,9 @@ void loop() {
           if (updateFrame++ == SKIP) {
             updateFrame = 0;
 #endif
-            // timer = (timer + 1) % abs(motion.period);
             timer += tStep;
             if (timer == abs(motion.period)) {
               timer = 0;
-              //              if (countDown == 0)
-              //                checkGyro = true;
-              //              else countDown--;
             }
             else if (timer == 255)
               timer = abs(motion.period) - 1;
@@ -793,19 +711,15 @@ void loop() {
         }
         else if (jointIdx >= firstMotionJoint) {
           int dutyIdx = timer * WALKING_DOF + jointIdx - firstMotionJoint;
-          calibratedPWM(jointIdx, motion.dutyAngles[dutyIdx]*motion.angleDataRatio//+ ((Xconfig && (jointIdx == 14 || jointIdx == 15)) ? 180 : 0)
+          calibratedPWM(jointIdx, motion.dutyAngles[dutyIdx]*motion.angleDataRatio
 #ifdef GYRO
                         + (checkGyro ?
                            (!(timer % skipGyro)  ?
                             adjust(jointIdx)
                             : currentAdjust[jointIdx])
                            : 0)
-                        //+ (checkGyro ? ((!(timer % skipGyro) && countDown == 0) ? adjust(jointIdx) : currentAdjust[jointIdx]) : 0)
 #endif
                        );
-          //          if (jointIdx == 8) {
-          //            PT(currentAdjust[jointIdx]); PT("\t"); PTL( adjust(jointIdx) );
-          //          }
         }
         jointIdx++;
       }

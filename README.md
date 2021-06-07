@@ -12,16 +12,7 @@ The project is still a complex system only for skilled makers, yet we want to sh
 
 ![](https://github.com/PetoiCamp/NonCodeFiles/blob/master/gif/ball.gif?raw=true)
 
-This repository works on both Nybble and Bittle controlled by NyBoard based on ATmega328P. To run the code on our robot models, first change the model and board definition in **OpenCat.h**, then upload **WriteInstinct.ino**.
-
-```
-#include "InstinctBittle.h" //activate the correct header file according to your model
-//#include "InstinctNybble.h"
-
-//#define NyBoard_V0_1
-//#define NyBoard_V0_2
-#define NyBoard_V1_0
-```
+This fork is tailored to only work on Bittle with NyBoard V1
 
 In the serial monitor, set **No line ending** and baudrate as **115200** (or **57600** for NyBoard V0_\*). Enter three capitalized **Y** after the prompts and wait for the MPU to calibrate. Then upload **OpenCat.ino** as the main functional code. 
 
