@@ -96,6 +96,13 @@
 #define GYRO
 #define ULTRA_SOUND
 
+#define SOUND A2
+#define LIGHT A3
+#define READING_COUNT 100
+bool soundLightSensorQ = false;
+bool restQ = false;
+int lightLag = 0;
+
 void beep(int8_t note, float duration = 10, int pause = 0, byte repeat = 1 ) {
   if (note == 0) {//rest note
     analogWrite(BUZZER, 0);
@@ -133,6 +140,27 @@ void meow(int repeat = 0, int pause = 200, int startF = 50,  int endF = 200, int
   }
 }
 
+#ifdef NyBoard_V0_1
+byte pins[] = {7, 0, 8, 15,
+               6, 1, 14, 9,
+               5, 2, 13, 10,
+               4, 3, 12, 11
+              };
+#define BATT A0 //voltage detector
+#define DEVICE_ADDRESS 0x50     //I2C Address of eeprom chip         
+#define BAUD_RATE 57600
+
+#elif defined NyBoard_V0_2
+byte pins[] = {4, 3, 11, 12,
+               5, 2, 13, 10,
+               6, 1, 14, 9,
+               7, 0, 15, 8
+              };
+#define BATT A0
+#define DEVICE_ADDRESS 0x50
+#define BAUD_RATE 57600
+
+#elif defined NyBoard_V1_0
 byte pins[] = {12, 11, 3, 4,
                13, 10, 5, 2,
                14, 9, 6, 1,
@@ -273,6 +301,33 @@ int8_t servoCalibs[DOF] = {};
 int currentAng[DOF] = {};
 float currentAdjust[DOF] = {};
 int calibratedDuty0[DOF] = {};
+
+//control related variables
+char token;
+char lastToken;
+#define CMD_LEN 10
+char *lastCmd = new char[CMD_LEN];
+char *newCmd = new char[CMD_LEN];
+byte newCmdIdx = 0;
+byte hold = 0;
+int8_t offsetLR = 0;
+bool checkGyro = true;
+int8_t skipGyro = 2;
+
+#define COUNT_DOWN 60
+
+uint8_t timer = 0;
+//#define SKIP 1
+#ifdef SKIP
+byte updateFrame = 0;
+#endif
+byte firstMotionJoint;
+byte jointIdx = 0;
+
+//bool Xconfig = false;
+unsigned long usedTime = 0;
+
+//--------------------
 
 //This function will write a 2 byte integer to the eeprom at the specified address and address + 1
 void EEPROMWriteInt(int p_address, int p_value)
@@ -595,11 +650,15 @@ void saveCalib(int8_t *var) {
   }
 }
 
-void calibratedPWM(byte i, float angle) {
+void calibratedPWM(byte i, float angle, float speedRatio = 0) {
+  int duty0 = calibratedDuty0[i] + currentAng[i] * pulsePerDegree[i] * rotationDirection(i);
   currentAng[i] = angle;
   int duty = calibratedDuty0[i] + angle * pulsePerDegree[i] * rotationDirection(i);
   duty = max(SERVOMIN , min(SERVOMAX , duty));
-  pwm.setPWM(pin(i), 0, duty);
+  byte steps = byte(round(abs(duty - duty0) / 1.0/*degreeStep*/ / speedRatio)); //default speed is 1 degree per step
+  for (byte s = 0; s <= steps; s++) {
+    pwm.setPWM(pin(i), 0, duty + (steps == 0 ? 0 : (1 + cos(M_PI * s / steps)) / 2 * (duty0 - duty)));
+  }
 }
 
 void allCalibratedPWM(char * dutyAng, byte offset = 0) {
@@ -642,8 +701,10 @@ template <typename T> void transform( T * target, byte angleDataRatio = 1, float
 void skillByName(char* skillName, byte angleDataRatio = 1, float speedRatio = 1, bool shutServoAfterward = true) {
   motion.loadBySkillName(skillName);
   transform(motion.dutyAngles, angleDataRatio, speedRatio);
-  if (shutServoAfterward)
+  if (shutServoAfterward) {
     shutServos();
+    token = 'd';
+  }
 }
 
 
@@ -689,4 +750,100 @@ template <typename T> void printEEPROMList(int EEaddress, byte len = DOF) {
 char getUserInput() {//limited to one character
   while (!Serial.available());
   return Serial.read();
+}
+
+
+bool sensorConnectedQ(int n) {
+  float mean = 0;
+  float bLag = analogRead(A3);
+  for (int i = 0; i < READING_COUNT; i++) {
+    int a, b;
+    a = analogRead(A2);
+    b = analogRead(A3);
+    mean = mean + ((a - b) * (a - b) - mean) / (i + 1);
+
+    if (abs(a - b) > 50 && abs(b - bLag) < 5) {
+      return true;
+    }
+
+    bLag = b;
+    delay(1);
+  }
+  return sqrt(mean) > 20 ? true : false;
+}
+
+
+
+int SoundLightSensorPattern(char *cmd) { //under construction, and will only be active with our new sound and light sensor connected.
+  int sound = analogRead(SOUND); //larger sound has larger readings
+  int light = analogRead(LIGHT); //lower light has larger readings
+  int lightDiff = light - lightLag;
+  lightLag = light;
+  Serial.print(1024);
+  Serial.print('\t');
+  Serial.print(sound);
+  Serial.print('\t');
+  Serial.println(light);
+  if (light > 800 && sound < 500) { //dark condition
+    if (!restQ) {
+      skillByName("rest", 1, 1, 1);
+      delay(500);
+      restQ = true;
+    }
+  }
+  else {
+    int headPan;
+    if (abs(light - 450) > 10)
+      headPan = min(max(currentAng[0] + (light - 450) / 7, -50), 50);
+    if (sound > 250)
+      headPan = min(max(headPan + (random(0, 2) * 2 - 1) * (sound - 250) / 10, -50), 50);
+    calibratedPWM(0, abs(headPan) > 80 ? 0 : headPan, 0.01);
+    restQ = false;
+    if (sound > 700){
+      if (light - lightLag  < - 50) {
+        beep(15);
+        PTL("Bang!");
+        strcpy(cmd, "pd");
+        token = 'k';
+        return 4;
+      }
+      else {
+        strcpy(cmd, "balance");
+        token = 'k';
+        return 4;
+        }
+      }
+        //delay(10);
+      }
+  return 0;
+  //    if (sound < 700) {
+  //      skillByName("sit", 1, 1, 0);
+  //    }
+  //    else {
+  //      skillByName("balance", 1, 2, 0);
+  //      delay(500);
+  //    }
+  //    skillByName("sit", 1, 1, 0);
+
+
+
+  //  else  //bright condition
+  //    //if (abs(light - lightLag))
+  //    if (sound > 150) {
+  //      if (sound > 250) {
+  //        int headPan= min(max(currentAng[0] + (random(0, 2) * 2 - 1) * (sound - 250) / 10, -50), 50);
+  //        calibratedPWM(0, abs(movement) > 80 ? 0 : movement, 0.001);
+  //        delay(10);
+  //      }
+  //      if (sound < 700) {
+  //        skillByName("sit", 1, 1, 0);
+  //      }
+  //      else {
+  //        skillByName("balance", 1, 2, 0);
+  //        delay(500);
+  //      }
+  //    }
+
+
+
 }
