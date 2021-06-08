@@ -29,6 +29,7 @@
   SOFTWARE.
 */
 #include "OpenCat.h"
+#include "Signals.h"
 #define INSTINCT_SKETCH
 
 void saveMPUcalib(int * var) {

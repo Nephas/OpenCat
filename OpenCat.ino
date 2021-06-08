@@ -29,6 +29,7 @@
 */
 #define MAIN_SKETCH
 #include "WriteInstinct/OpenCat.h"
+#include "WriteInstinct/Signals.h"
 
 #include <I2Cdev.h>
 #include <MPU6050_6Axis_MotionApps20.h>
@@ -111,15 +112,10 @@ String translateIR() // takes action based on IR code received
 
     default: {}
       return ("");
-  }// End Case
-  //delay(100); // Do not get immediate repeat //no need because the main loop is slow
-
-  // The control could be organized in another way, such as:
-  // forward/backward to change the gaits corresponding to different speeds.
-  // left/right key for turning left and right
-  // number keys for different postures or behaviors
+  }
 }
 
+GaitMemory gaitMemory = new GaitMemory();
 
 char token;
 char lastToken;
@@ -384,23 +380,18 @@ void setup() {
 }
 
 void loop() {
-  float voltage = analogRead(BATT);
-  if (voltage < 300) { //give the cat a break when voltage drops after sprint
-    //adjust the thresholds according to your batteries' voltage
-    //if set too high, the robot will keep crying.
-    //If too low, Nybble may faint due to temporary voltage drop
+  if (analogRead(BATT) < 300) {
     PTL("check battery");
     PTL(voltage);//relative voltage
     meow();
     delay(500);
-  }
-  else {
+  } else {
     newCmd[0] = '\0';
     newCmdIdx = 0;
 
     // input block
     if (irrecv.decode(&results)) {
-      String IRsig = irParser(translateIR());
+      String IRsig = gaitMemory.preprocessSignal(translateIR());
       if (IRsig != "") {
         strcpy(newCmd, IRsig.c_str());
         if (strlen(newCmd) == 1)
@@ -586,8 +577,9 @@ void loop() {
         if (token == T_UNDEFINED) {}; //some words for undefined behaviors
         if (token == T_SKILL) { //validating key
 
-          // TODO: insert a preprocessor to switch gaits
-          motion.loadBySkillName(newCmd);
+          char skill[CMD_LEN];
+          gaitMemory.preprocessSignal(newCmd).toCharArray(skill, CMD_LEN);
+          motion.loadBySkillName(skill);
 
           char lr = newCmd[strlen(newCmd) - 1];
           offsetLR = (lr == 'L' ? 15 : (lr == 'R' ? -15 : 0));
