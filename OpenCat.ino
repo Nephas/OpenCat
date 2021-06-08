@@ -117,28 +117,7 @@ String translateIR() // takes action based on IR code received
 
 GaitMemory gaitMemory = new GaitMemory();
 
-char token;
-char lastToken;
-#define CMD_LEN 10
-char *lastCmd = new char[CMD_LEN];
-char *newCmd = new char[CMD_LEN];
-byte newCmdIdx = 0;
-byte hold = 0;
-int8_t offsetLR = 0;
-bool checkGyro = true;
-int8_t skipGyro = 2;
 
-#define COUNT_DOWN 60
-
-uint8_t timer = 0;
-#ifdef SKIP
-byte updateFrame = 0;
-#endif
-byte firstMotionJoint;
-byte jointIdx = 0;
-
-
-unsigned long usedTime = 0;
 void getFIFO() {//get FIFO only without further processing
   while (fifoCount < packetSize) fifoCount = mpu.getFIFOCount();
 
@@ -229,10 +208,6 @@ void checkBodyMotion()  {
         if (fabs(ypr[2]) > LARGE_ROLL) {
           strcpy(newCmd, "rc");
           newCmdIdx = 4;
-        }
-        else {
-          strcpy(newCmd, ypr[1] < LARGE_PITCH ? "lifted" : "dropped");
-          newCmdIdx = 1;
         }
       }
       hold = 10;
@@ -372,23 +347,35 @@ void setup() {
     shutServos();
     token = T_REST;
   }
-  beep(10, 4);
+  beep(30);
 
   pinMode(BATT, INPUT);
   pinMode(BUZZER, OUTPUT);
+
+  soundLightSensorQ = sensorConnectedQ(READING_COUNT);//test if the Petoi Sound&Light sensor is connected
+  lightLag = analogRead(LIGHT);
   meow();
 }
 
 void loop() {
-  if (analogRead(BATT) < 300) {
-    PTL("check battery");
-    PTL(voltage);//relative voltage
-    meow();
-    delay(500);
-  } else {
+  float voltage = analogRead(BATT);
+  if (voltage < 640) { //if battery voltage < 6.4V, it needs to be recharged
+    //give the robot a break when voltage drops after sprint
+    //adjust the thresholds according to your batteries' voltage
+    //if set too high, the robot will stop working when the battery still has power.
+    //If too low, the robot may not alarm before the battery shuts off
+    PT(voltage/100);
+    PTL("V low power!");
+    beep(15, 50, 50, 3);
+    delay(1500);
+  }
+  else {
     newCmd[0] = '\0';
     newCmdIdx = 0;
-
+    if (soundLightSensorQ && motion.period == 1) {//if the Petoi Sound&Light sensor is connected
+      //and the robot is not walking (to avoid noise)
+      newCmdIdx=SoundLightSensorPattern(newCmd);
+    }
     // input block
     if (irrecv.decode(&results)) {
       String IRsig = gaitMemory.preprocessSignal(translateIR());
@@ -527,7 +514,7 @@ void loop() {
                   strcpy(lastCmd, "c");
                   motion.loadBySkillName("calib");
                   transform( motion.dutyAngles);
-                  checkGyro=false;
+                  checkGyro = false;
                 }
                 if (inLen == 2) {
                   if (target[1] >= 1001) { // Using 1001 for incremental calibration. 1001 is adding 1 degree, 1002 is adding 2 and 1009 is adding 9 degrees
