@@ -140,27 +140,6 @@ void meow(int repeat = 0, int pause = 200, int startF = 50,  int endF = 200, int
   }
 }
 
-#ifdef NyBoard_V0_1
-byte pins[] = {7, 0, 8, 15,
-               6, 1, 14, 9,
-               5, 2, 13, 10,
-               4, 3, 12, 11
-              };
-#define BATT A0 //voltage detector
-#define DEVICE_ADDRESS 0x50     //I2C Address of eeprom chip         
-#define BAUD_RATE 57600
-
-#elif defined NyBoard_V0_2
-byte pins[] = {4, 3, 11, 12,
-               5, 2, 13, 10,
-               6, 1, 14, 9,
-               7, 0, 15, 8
-              };
-#define BATT A0
-#define DEVICE_ADDRESS 0x50
-#define BAUD_RATE 57600
-
-#elif defined NyBoard_V1_0
 byte pins[] = {12, 11, 3, 4,
                13, 10, 5, 2,
                14, 9, 6, 1,

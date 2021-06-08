@@ -29,7 +29,6 @@
 */
 #define MAIN_SKETCH
 #include "WriteInstinct/OpenCat.h"
-#include "WriteInstinct/Signals.h"
 
 #include <I2Cdev.h>
 #include <MPU6050_6Axis_MotionApps20.h>
@@ -45,6 +44,7 @@
 int8_t lag = 0;
 float ypr[3];         // [yaw, pitch, roll]   yaw/pitch/roll container and gravity vector
 float yprLag[HISTORY][3];
+int8_t tStep = 1;
 
 MPU6050 mpu;
 #define OUTPUT_READABLE_YAWPITCHROLL
@@ -115,7 +115,7 @@ String translateIR() // takes action based on IR code received
   }
 }
 
-GaitMemory gaitMemory = new GaitMemory();
+GaitMemory* gaitMemory = new GaitMemory();
 
 
 void getFIFO() {//get FIFO only without further processing
@@ -334,7 +334,7 @@ void setup() {
     delay(200);
 
     //meow();
-    strcpy(lastCmd, "zero");
+    strcpy(lastCmd, "rest");
     motion.loadBySkillName(lastCmd);
     for (int8_t i = DOF - 1; i >= 0; i--) {
       pulsePerDegree[i] = float(PWM_RANGE) / servoAngleRange(i);
@@ -378,7 +378,7 @@ void loop() {
     }
     // input block
     if (irrecv.decode(&results)) {
-      String IRsig = gaitMemory.preprocessSignal(translateIR());
+      String IRsig = gaitMemory->preprocessSignal(translateIR());
       if (IRsig != "") {
         strcpy(newCmd, IRsig.c_str());
         if (strlen(newCmd) == 1)
@@ -565,7 +565,7 @@ void loop() {
         if (token == T_SKILL) { //validating key
 
           char skill[CMD_LEN];
-          gaitMemory.preprocessSignal(newCmd).toCharArray(skill, CMD_LEN);
+          gaitMemory->preprocessSignal(newCmd).toCharArray(skill, CMD_LEN);
           motion.loadBySkillName(skill);
 
           char lr = newCmd[strlen(newCmd) - 1];
