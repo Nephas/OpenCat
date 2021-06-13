@@ -57,6 +57,29 @@ void handleCalibrationPage() {
   Serial.print("c");
 }
 
+void handleSerialApi() {
+    if (server.method() == HTTP_PUT) {
+        String cmd = server.arg("cmd");
+        Serial.print(cmd);
+
+        server.send(200, "text/plain", cmd);
+    }
+
+    if (server.method() == HTTP_GET) {
+        if (server.arg("flush") == "true") {
+            String body = "";
+            char c;
+            while (Serial.available() > 0) {
+                c = Serial.read();
+                body.concat(c);
+            };
+            server.send(200, "text/plain", body);
+        } else {
+            server.send(200, "text/plain", Serial.readStringUntil('\n'));
+        }
+    }
+}
+
 void handleCalibration() {
   String joint = server.arg("c");
   String offset = server.arg("o");
@@ -173,6 +196,7 @@ void setup(void) {
   server.on("/action", handleAction);
   server.on("/calibrationpage", handleCalibrationPage);
   server.on("/calibration", handleCalibration);
+  server.on("/api", handleSerialApi);
 
   server.begin();
   Serial.println("HTTP server started");
