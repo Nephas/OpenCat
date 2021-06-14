@@ -357,6 +357,47 @@ void setup() {
   meow();
 }
 
+unsigned long tLast = 0L;
+unsigned long tUpdate = 500L;
+
+void printSensorReadings(){
+    if (millis() < tLast + tUpdate) return;
+    tLast = millis();
+    Serial.print("T[");
+    Serial.print(millis());
+    Serial.print("]-");
+    Serial.print("YPR[");
+    Serial.print(ypr[0]);
+    Serial.print(",");
+    Serial.print(ypr[1]);
+    Serial.print(",");
+    Serial.print(ypr[2]);
+    Serial.print("]-");
+    int ir = digitalRead(6);
+    Serial.print("IR[");
+    Serial.print(ir);
+    Serial.println("]");
+}
+
+bool collision = false;
+
+bool avoidCollision(){
+    int ir = digitalRead(6);
+    if (ir == 0 && collision == false){
+        Serial.print("T[");
+        Serial.print(millis());
+        Serial.print("]-");
+        Serial.println("COLLISION");
+
+        collision = true;
+        return true;
+    }
+    if (ir == 1 && collision == true){
+        collision = false;
+    }
+    return false;
+}
+
 void loop() {
   float voltage = analogRead(BATT);
   if (voltage < 640) { //if battery voltage < 6.4V, it needs to be recharged
@@ -368,14 +409,13 @@ void loop() {
     PTL("V low power!");
     beep(15, 50, 50, 3);
     delay(1500);
-  }
-  else {
+  } else {
+    if (avoidCollision()) skillByName("balance",1,1,false);
+    printSensorReadings();
+
     newCmd[0] = '\0';
     newCmdIdx = 0;
-    if (soundLightSensorQ && motion.period == 1) {//if the Petoi Sound&Light sensor is connected
-      //and the robot is not walking (to avoid noise)
-      newCmdIdx=SoundLightSensorPattern(newCmd);
-    }
+
     // input block
     if (irrecv.decode(&results)) {
       String IRsig = gaitMemory->preprocessSignal(translateIR());
@@ -558,6 +598,7 @@ void loop() {
             strcpy(newCmd, inBuffer.c_str());
           }
       }
+
       while (Serial.available() && Serial.read()); //flush the remaining serial buffer in case the commands are parsed incorrectly
       //check above
       if (strcmp(newCmd, "") && strcmp(newCmd, lastCmd) ) {
